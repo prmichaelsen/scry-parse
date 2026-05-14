@@ -7,13 +7,13 @@ Parse, validate, and mint `@scry.entry`, `@scry.anchor`, and `@scry.bind` marker
 ## Install
 
 ```bash
-npm install scry-parse
+npm install @prmichaelsen/scry-parse
 ```
 
 ## Usage
 
 ```typescript
-import { parseMarkers, validateMarker, mintId } from 'scry-parse';
+import { parseMarkers, validateMarker, mintId } from '@prmichaelsen/scry-parse';
 
 // Parse markers from file content
 const result = parseMarkers(content, 'src/auth.ts');
@@ -108,7 +108,7 @@ interface BindingMarker {
 ## Constants
 
 ```typescript
-import { BASELINE_KINDS, BASELINE_STATUSES } from 'scry-parse';
+import { BASELINE_KINDS, BASELINE_STATUSES } from '@prmichaelsen/scry-parse';
 
 BASELINE_KINDS   // ['design', 'pattern', 'spec', 'lesson', 'internal', 'task', 'milestone', 'report', 'audit', 'research', 'code']
 BASELINE_STATUSES // ['draft', 'active', 'deprecated']

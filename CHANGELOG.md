@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] — 2026-05-14
 
+### Changed
+
+- Package published under `@prmichaelsen/scry-parse` (scoped namespace, pre-first-publish rename)
+
 ### Added
 
 - `parseMarkers(content, file?, language?): ParseResult` — parse `@scry.entry`, `@scry.anchor`, `@scry.bind` markers from any source file

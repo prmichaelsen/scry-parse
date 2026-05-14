@@ -1,5 +1,5 @@
 {
-  "name": "scry-parse",
+  "name": "@prmichaelsen/scry-parse",
   "version": "1.0.0",
   "description": "TypeScript parser for scry-spec v1.0 markers",
   "main": "dist/index.js",
