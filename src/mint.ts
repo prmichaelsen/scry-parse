@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 /**
  * Generate a scry marker ID in {kind}.{name}~{hash} format.
@@ -27,8 +27,7 @@ export function mintId(kind: string, name: string, content?: string): string {
     hash = createHash('sha256').update(content).digest('hex').slice(0, 8);
   } else {
     // Random: use crypto.randomBytes for 4 bytes → 8 hex chars
-    const { randomBytes } = require('crypto');
-    hash = (randomBytes(4) as Buffer).toString('hex');
+    hash = randomBytes(4).toString('hex');
   }
 
   return `${safeKind}.${safeName}~${hash}`;
