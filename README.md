@@ -40,7 +40,11 @@ const id = mintId('design', 'auth-flow', 'optional-content-for-deterministic-has
 
 Parse all scry markers from `content`. Comment style is auto-detected from the sentinel line.
 
-**Supported comment styles**: `//` (TypeScript/JS/C/Java/Rust), `#` (Python/Shell/Ruby/YAML), `--` (SQL/Haskell), `;;` / `;` (Lisp/Clojure), `<!-- -->` (Markdown/HTML).
+**Supported comment styles** (auto-detected from sentinel line):
+
+Line comments: `//` (TypeScript/JS/C/Java/Rust), `#` (Python/Shell/Ruby/YAML), `--` (SQL/Haskell), `;;` / `;` (Lisp/Clojure), `<!-- -->` (Markdown/HTML).
+
+Block comments: `/** */` / `/* */` (JSDoc/C-style), `(* *)` (OCaml/Pascal), `{- -}` (Haskell), `<# #>` (PowerShell).
 
 Returns:
 ```typescript
@@ -118,7 +122,7 @@ BASELINE_STATUSES // ['draft', 'active', 'deprecated']
 
 Implements [scry-spec v1.0](https://github.com/prmichaelsen/scry-spec) (FR1–FR14):
 
-- ✅ FR1: Declarative marker sentinel syntax (all 5 comment styles)
+- ✅ FR1: Declarative marker sentinel syntax (5 line-comment + 5 block-comment styles)
 - ✅ FR2: Binding marker format (single-line + block form, mutual exclusion)
 - ✅ FR3: Positional exclusion (bindings inside declarative spans excluded)
 - ✅ FR4: Entry marker body (required fields, required-empty-allowed, optional)
