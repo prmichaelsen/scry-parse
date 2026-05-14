@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/prmichaelsen/scry-spec"
+    "url": "https://github.com/prmichaelsen/scry-parse"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
