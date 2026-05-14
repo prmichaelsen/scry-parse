@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-05-14
+
+### Fixed
+
+- Block-comment styles (JSDoc `/** */`, C `/* */`, OCaml `(* *)`, Haskell `{- -}`, PowerShell `<# #>`)
+  now parse correctly. Previously only line-comment styles (`#`, `//`, `--`, `;;`, `;`, `<!-- -->`)
+  were supported, violating the spec's FR1 universality claim.
+- Comment-prefix detection now uses inference from the first YAML-key body line (`inferPrefix`)
+  rather than a hardcoded style switch. New comment styles work without parser changes.
+- Sentinel detection (`@scry.entry`, `@scry.entry.end`, `@scry.bind`, etc.) now recognizes
+  sentinels regardless of surrounding block-comment syntax (e.g. `*` continuation, `/*`, `*/`).
+
+### Added
+
+- 7 new tests for block-comment styles: JSDoc, C-style, OCaml, Haskell, PowerShell, JSDoc binding,
+  and a regression test confirming existing line-comment styles are unaffected.
+
 ## [1.0.0] — 2026-05-14
 
 ### Changed

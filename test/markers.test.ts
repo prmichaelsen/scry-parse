@@ -564,3 +564,155 @@ seeded_questions:
     expect(result.anchors[0].seededQuestions).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Block-comment support (v1.0.1 — FR1 universality)
+// ---------------------------------------------------------------------------
+
+describe('JSDoc block comment entry', () => {
+  it('parses entry inside JSDoc /** */ comment', () => {
+    const content = `/**
+ * @scry.entry
+ * id: design.foo~12345678
+ * kind: design
+ * summary: JSDoc test entry
+ * status: active
+ * rationale:
+ * applies:
+ * seeded_questions:
+ * tags:
+ * weight:
+ * @scry.entry.end
+ */`;
+    const result = parseMarkers(content, 'src/foo.ts');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('design.foo~12345678');
+    expect(result.entries[0].kind).toBe('design');
+    expect(result.entries[0].summary).toBe('JSDoc test entry');
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('C-style block comment entry', () => {
+  it('parses entry inside /* */ comment', () => {
+    const content = `/*
+   @scry.entry
+   id: design.bar~abcd1234
+   kind: design
+   summary: C-block test entry
+   status: active
+   rationale:
+   applies:
+   seeded_questions:
+   tags:
+   weight:
+   @scry.entry.end
+*/`;
+    const result = parseMarkers(content, 'src/bar.c');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('design.bar~abcd1234');
+    expect(result.entries[0].summary).toBe('C-block test entry');
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('OCaml block comment entry', () => {
+  it('parses entry inside (* *) comment', () => {
+    const content = `(*
+   @scry.entry
+   id: design.ocaml~deadbeef
+   kind: design
+   summary: OCaml block test
+   status: active
+   rationale:
+   applies:
+   seeded_questions:
+   tags:
+   weight:
+   @scry.entry.end
+*)`;
+    const result = parseMarkers(content, 'src/foo.ml');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('design.ocaml~deadbeef');
+    expect(result.entries[0].summary).toBe('OCaml block test');
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('Haskell block comment entry', () => {
+  it('parses entry inside {- -} comment', () => {
+    const content = `{-
+   @scry.entry
+   id: design.haskell~cafe1234
+   kind: design
+   summary: Haskell block test
+   status: active
+   rationale:
+   applies:
+   seeded_questions:
+   tags:
+   weight:
+   @scry.entry.end
+-}`;
+    const result = parseMarkers(content, 'src/foo.hs');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('design.haskell~cafe1234');
+    expect(result.entries[0].summary).toBe('Haskell block test');
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('PowerShell block comment entry', () => {
+  it('parses entry inside <# #> comment', () => {
+    const content = `<#
+   @scry.entry
+   id: design.ps1~f00dbeef
+   kind: design
+   summary: PowerShell block test
+   status: active
+   rationale:
+   applies:
+   seeded_questions:
+   tags:
+   weight:
+   @scry.entry.end
+#>`;
+    const result = parseMarkers(content, 'src/foo.ps1');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('design.ps1~f00dbeef');
+    expect(result.entries[0].summary).toBe('PowerShell block test');
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('JSDoc block binding', () => {
+  it('parses @scry.bind inside JSDoc * continuation lines', () => {
+    const content = `/**
+ * @scry.bind my-func~cafebabe spec.api~12345678#FR1
+ * JSDoc block binding comment.
+ * @scry.bind.end
+ */
+export function myFunc() {}`;
+    const result = parseMarkers(content, 'src/myFunc.ts');
+    expect(result.bindings).toHaveLength(1);
+    expect(result.bindings[0].localId).toBe('my-func~cafebabe');
+    expect(result.bindings[0].ref).toBe('spec.api~12345678#FR1');
+    expect(result.bindings[0].comment).toBe('JSDoc block binding comment.');
+  });
+});
+
+describe('Existing line-comment styles unaffected by block-comment changes', () => {
+  it('still parses Python, TypeScript, SQL styles correctly', () => {
+    const py = `# @scry.entry\n# id: code.py~aaaa0000\n# kind: code\n# summary: Python check\n# status: active\n# rationale:\n# applies:\n# seeded_questions:\n# tags:\n# weight:\n# @scry.entry.end`;
+    const ts = `// @scry.entry\n// id: code.ts~bbbb1111\n// kind: code\n// summary: TS check\n// status: active\n// rationale:\n// applies:\n// seeded_questions:\n// tags:\n// weight:\n// @scry.entry.end`;
+    const sql = `-- @scry.entry\n-- id: code.sql~cccc2222\n-- kind: code\n-- summary: SQL check\n-- status: active\n-- rationale:\n-- applies:\n-- seeded_questions:\n-- tags:\n-- weight:\n-- @scry.entry.end`;
+
+    const rPy = parseMarkers(py, 'test.py');
+    const rTs = parseMarkers(ts, 'test.ts');
+    const rSql = parseMarkers(sql, 'test.sql');
+
+    expect(rPy.entries[0].id).toBe('code.py~aaaa0000');
+    expect(rTs.entries[0].id).toBe('code.ts~bbbb1111');
+    expect(rSql.entries[0].id).toBe('code.sql~cccc2222');
+  });
+});

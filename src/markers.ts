@@ -79,52 +79,108 @@ export interface Diagnostic {
 }
 
 // ---------------------------------------------------------------------------
-// Language detection helpers
+// Comment-prefix inference (supports all line and block comment styles)
 // ---------------------------------------------------------------------------
 
 type Language = 'markdown' | 'typescript' | 'python' | 'sql' | 'lisp' | 'auto';
 
-/** Detect comment prefix style from a line containing the sentinel */
-function detectCommentStyle(sentinelLine: string): string {
-  const trimmed = sentinelLine.trimStart();
-  if (trimmed.startsWith('<!--')) return 'markdown';
-  if (trimmed.startsWith('//')) return 'ts';
-  if (trimmed.startsWith('#')) return 'python';
-  if (trimmed.startsWith('--')) return 'sql';
-  if (trimmed.startsWith(';;')) return 'lisp2';
-  if (trimmed.startsWith(';')) return 'lisp1';
-  return 'none';
+/**
+ * Infer the comment prefix from body lines using the YAML-key-start trick.
+ *
+ * Algorithm (ported from scry Python implementation):
+ *   1. Scan body lines for the first one whose non-key portion is purely
+ *      whitespace + comment characters.
+ *   2. That portion is the inferred prefix.
+ *   3. Strip the prefix uniformly from all body lines.
+ *
+ * This handles all comment styles without enumeration:
+ *   - Line-comment:  `# `, `// `, `-- `, `;;`, `;`
+ *   - Block-comment: ` * ` (JSDoc), ` ` (plain indent)
+ */
+const _KEY_RE = /^(.*?)([A-Za-z_][A-Za-z0-9_-]*\s*:)/;
+const _PREFIX_VALID = /^[\s#/*\->]*$/;
+
+function inferPrefix(lines: string[]): string {
+  for (const line of lines) {
+    const m = _KEY_RE.exec(line);
+    if (!m) continue;
+    const candidate = m[1];
+    if (_PREFIX_VALID.test(candidate)) return candidate;
+  }
+  return '';
 }
 
-/** Strip comment prefix from a body line based on detected style */
-function stripCommentPrefix(line: string, style: string): string {
-  switch (style) {
-    case 'markdown':
-      // Markdown body lines don't have per-line prefixes
-      // but might end with --> — strip trailing -->
-      return line.replace(/-->\s*$/, '').replace(/<!--\s*/, '');
-    case 'ts':
-      return line.replace(/^\s*\/\/\s?/, '');
-    case 'python':
-      return line.replace(/^\s*#\s?/, '');
-    case 'sql':
-      return line.replace(/^\s*--\s?/, '');
-    case 'lisp2':
-      return line.replace(/^\s*;;\s?/, '');
-    case 'lisp1':
-      return line.replace(/^\s*;\s?/, '');
-    default:
-      return line;
+/**
+ * Strip the inferred comment prefix from each line in a body string.
+ *
+ * @param body - Joined body lines
+ * @param fallbackPrefix - Used when no YAML-key line is found (e.g. freeform
+ *   prose in binding bodies). Typically the prefix extracted from the sentinel
+ *   line: everything before `@scry.`.
+ */
+function stripBodyPrefixes(body: string, fallbackPrefix = ''): string {
+  const lines = body.split('\n');
+  const prefix = inferPrefix(lines) || fallbackPrefix;
+  if (!prefix) return body;
+  const out: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith(prefix)) {
+      out.push(line.slice(prefix.length));
+    } else if (line.trim() === '') {
+      out.push('');
+    } else {
+      // Try rstripped prefix (handles continuation lines with trimmed trailing space)
+      const rstripped = prefix.trimEnd();
+      if (rstripped && line.startsWith(rstripped)) {
+        out.push(line.slice(rstripped.length).replace(/^ /, ''));
+      } else {
+        out.push(line);
+      }
+    }
   }
+  return out.join('\n');
+}
+
+/** Extract the comment prefix from a sentinel line (everything before '@scry.'). */
+function prefixFromSentinel(sentinelLine: string): string {
+  const idx = sentinelLine.indexOf('@scry.');
+  return idx >= 0 ? sentinelLine.slice(0, idx) : '';
 }
 
 // ---------------------------------------------------------------------------
 // Sentinel matchers
 // ---------------------------------------------------------------------------
 
+/**
+ * Strip any comment wrappers from a line to extract the core sentinel token.
+ *
+ * Handles all line-comment styles (// # -- ;; ;) and block-comment styles
+ * (/* /** * {- (* <# and their closing counterparts).
+ */
+function extractSentinelContent(line: string): string {
+  return line
+    // Strip leading whitespace and any comment-opening chars
+    .replace(/^\s*(?:<!--\s*|\/\*+\s*|\*+\s*|\/\/+\s*|#+\s*|--+\s*|;;+\s*|;\s*|\{-\s*|\(\*\s*|<#\s*)/, '')
+    // Strip trailing comment-closing chars
+    .replace(/\s*(?:-->\s*|\*\/\s*|-\}\s*|\*\)\s*|#>\s*)$/, '')
+    .trim();
+}
+
+/**
+ * Extract the leading comment prefix from a sentinel line (without the sentinel text).
+ *
+ * Used for binding block bodies, which contain free-text prose (not YAML),
+ * so inferPrefix (YAML-key-based) cannot be used. Instead we extract the prefix
+ * from the bind open line and strip it uniformly from body lines.
+ */
+function extractCommentPrefix(line: string): string {
+  const m = /^\s*(?:<!--\s*|\/\*+\s*|\*+\s*|\/\/+\s*|#+\s*|--+\s*|;;+\s*|;\s*|\{-\s*|\(\*\s*|<#\s*)/.exec(line);
+  return m ? m[0] : '';
+}
+
 /** Match opening declarative sentinel: @scry.{entry|anchor} [{anchor-id}] */
 function matchDeclarativeOpen(line: string): { type: 'entry' | 'anchor'; anchorId?: string } | null {
-  const bare = line.replace(/^\s*(\/\/|#|--|;;|;)\s?/, '').replace(/<!--\s?/, '').replace(/\s*-->$/, '').trim();
+  const bare = extractSentinelContent(line);
   const entryMatch = /^@scry\.entry\s*$/.exec(bare);
   if (entryMatch) return { type: 'entry' };
   const anchorMatch = /^@scry\.anchor\s+([a-z0-9-]+~[a-f0-9]{8})\s*$/.exec(bare);
@@ -134,13 +190,13 @@ function matchDeclarativeOpen(line: string): { type: 'entry' | 'anchor'; anchorI
 
 /** Match closing declarative sentinel: @scry.{type}.end */
 function matchDeclarativeClose(line: string, type: 'entry' | 'anchor'): boolean {
-  const bare = line.replace(/^\s*(\/\/|#|--|;;|;)\s?/, '').replace(/<!--\s?/, '').replace(/\s*-->$/, '').trim();
+  const bare = extractSentinelContent(line);
   return bare === `@scry.${type}.end`;
 }
 
 /** Match bind opening line: @scry.bind {local-id} {ref} [{comment}] */
 function matchBindOpen(line: string): { localId: string; ref: string; trailing: string | null } | null {
-  const bare = line.replace(/^\s*(\/\/|#|--|;;|;)\s?/, '').replace(/<!--\s?/, '').replace(/\s*-->$/, '').trim();
+  const bare = extractSentinelContent(line);
   const m = /^@scry\.bind\s+(\S+)\s+(\S+)(?:\s+(.+))?$/.exec(bare);
   if (!m) return null;
   return {
@@ -152,7 +208,7 @@ function matchBindOpen(line: string): { localId: string; ref: string; trailing: 
 
 /** Match bind close: @scry.bind.end */
 function matchBindClose(line: string): boolean {
-  const bare = line.replace(/^\s*(\/\/|#|--|;;|;)\s?/, '').replace(/<!--\s?/, '').replace(/\s*-->$/, '').trim();
+  const bare = extractSentinelContent(line);
   return bare === '@scry.bind.end';
 }
 
@@ -205,13 +261,13 @@ function insideDeclarativeSpan(lineIdx: number, spans: DeclarativeSpan[]): boole
 // Body extraction
 // ---------------------------------------------------------------------------
 
-/** Extract and clean YAML body between open/close lines */
-function extractBody(lines: string[], startIdx: number, endIdx: number, style: string): string {
+/** Extract and clean YAML body between open/close lines using prefix inference */
+function extractBody(lines: string[], startIdx: number, endIdx: number): string {
   const bodyLines: string[] = [];
   for (let i = startIdx + 1; i < endIdx; i++) {
-    bodyLines.push(stripCommentPrefix(lines[i], style));
+    bodyLines.push(lines[i]);
   }
-  return bodyLines.join('\n');
+  return stripBodyPrefixes(bodyLines.join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -300,7 +356,6 @@ export function parseMarkers(
     const declOpen = matchDeclarativeOpen(line);
     if (declOpen) {
       const startI = i;
-      const style = detectCommentStyle(line);
       i++;
       const bodyLines: number[] = [];
 
@@ -308,7 +363,7 @@ export function parseMarkers(
         if (matchDeclarativeClose(lines[i], declOpen.type)) {
           // Found close
           const endI = i;
-          const bodyYaml = extractBody(lines, startI, endI, style);
+          const bodyYaml = extractBody(lines, startI, endI);
 
           if (declOpen.type === 'entry') {
             const entry = parseEntryBody(bodyYaml, file, [startI, endI], diagnostics);
@@ -346,7 +401,7 @@ export function parseMarkers(
       }
 
       const openIdx = i;
-      const style = detectCommentStyle(line);
+      const bindPrefix = extractCommentPrefix(line);
       // Deterministic forward scan (FR2)
       i++;
       const blockBodyLines: string[] = [];
@@ -365,8 +420,12 @@ export function parseMarkers(
             });
             // Still record with trailing as comment per lenient behavior
           }
+          // Strip the open-sentinel's comment prefix from each body line.
+          // Binding bodies are free-text prose (not YAML) so we cannot use
+          // inferPrefix (which requires YAML keys). We use the prefix from
+          // the open sentinel line and strip it uniformly.
           const comment = blockBodyLines
-            .map(l => stripCommentPrefix(l, style))
+            .map(l => (bindPrefix && l.startsWith(bindPrefix)) ? l.slice(bindPrefix.length) : l)
             .join('\n')
             .trim();
           const bindSpan: [number, number] = [openIdx, i];
