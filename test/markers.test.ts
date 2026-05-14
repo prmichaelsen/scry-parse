@@ -716,3 +716,47 @@ describe('Existing line-comment styles unaffected by block-comment changes', () 
     expect(rSql.entries[0].id).toBe('code.sql~cccc2222');
   });
 });
+
+describe('Unknown YAML field preservation', () => {
+  it('preserves unknown fields in entry extra map', () => {
+    const content = `# @scry.entry
+# id: design.test~aabbccdd
+# kind: design
+# summary: Test extra field preservation
+# status: active
+# rationale:
+# applies:
+# seeded_questions:
+# tags:
+# weight:
+# my_custom_field: hello world
+# another_custom: 42
+# @scry.entry.end`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    const entry = result.entries[0];
+    expect(entry.extra).toBeDefined();
+    expect(entry.extra['my_custom_field']).toBe('hello world');
+    expect(entry.extra['another_custom']).toBe(42);
+    // known fields must not appear in extra
+    expect(entry.extra['id']).toBeUndefined();
+    expect(entry.extra['kind']).toBeUndefined();
+    expect(entry.extra['summary']).toBeUndefined();
+  });
+
+  it('has empty extra map when no unknown fields present', () => {
+    const content = `# @scry.entry
+# id: design.test~aabbccdd
+# kind: design
+# summary: No extra fields
+# status: active
+# rationale:
+# applies:
+# seeded_questions:
+# tags:
+# weight:
+# @scry.entry.end`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries[0].extra).toEqual({});
+  });
+});

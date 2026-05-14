@@ -29,6 +29,8 @@ export interface EntryMarker {
   implements: string | null;
   /** ID of artifact this replaces */
   supersedes: string | null;
+  /** Unknown YAML fields preserved as-is per spec (parsers must not drop them) */
+  extra: Record<string, unknown>;
   /** Source file path */
   file: string;
   /** [startLine, endLine] 0-indexed inclusive */
@@ -42,6 +44,8 @@ export interface AnchorMarker {
   description: string;
   /** Common questions about this anchor */
   seededQuestions: string[];
+  /** Unknown YAML fields preserved as-is per spec (parsers must not drop them) */
+  extra: Record<string, unknown>;
   /** Source file path */
   file: string;
   /** [startLine, endLine] 0-indexed inclusive */
@@ -547,6 +551,17 @@ function parseEntryBody(
     weight = isNaN(w) ? null : w;
   }
 
+  // Collect unknown fields per spec: "Unknown YAML fields must not error; parsers must preserve them"
+  const KNOWN_ENTRY_FIELDS = new Set([
+    'id', 'kind', 'summary', 'status', 'weight', 'tags',
+    'rationale', 'applies', 'seeded_questions', 'depends_on',
+    'implements', 'supersedes',
+  ]);
+  const extra: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (!KNOWN_ENTRY_FIELDS.has(k)) extra[k] = v;
+  }
+
   return {
     id,
     kind,           // FR8: preserved as-authored
@@ -560,6 +575,7 @@ function parseEntryBody(
     dependsOn: coerceArrayField(raw['depends_on']),
     implements: coerceNullableString(raw['implements']),
     supersedes: coerceNullableString(raw['supersedes']),
+    extra,
     file,
     span,
   };
@@ -603,10 +619,18 @@ function parseAnchorBody(
     return null;
   }
 
+  // Collect unknown fields per spec
+  const KNOWN_ANCHOR_FIELDS = new Set(['description', 'seeded_questions']);
+  const extra: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (!KNOWN_ANCHOR_FIELDS.has(k)) extra[k] = v;
+  }
+
   return {
     name: anchorId,
     description,
     seededQuestions: coerceArrayField(raw['seeded_questions']),
+    extra,
     file,
     span,
   };
