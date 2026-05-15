@@ -1,6 +1,6 @@
 # scry-parse
 
-TypeScript parser for [scry-spec v1.0.3](https://github.com/prmichaelsen/scry-spec) markers.
+TypeScript parser for [scry-spec v1.0.5](https://github.com/prmichaelsen/scry-spec) markers.
 
 Parse, validate, and mint `@scry.entry`, `@scry.anchor`, and `@scry.bind` markers from any source file.
 
@@ -121,12 +121,13 @@ BASELINE_STATUSES // ['draft', 'active', 'deprecated']
 
 ## Spec conformance
 
-Implements [scry-spec v1.0.3](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR11.4/FR11.7 as clarified in v1.0.2–v1.0.3):
+Implements [scry-spec v1.0.5](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR11.4/FR11.6/FR11.7 as clarified in v1.0.2–v1.0.5):
 
 - ✅ FR1: Declarative marker sentinel syntax (5 line-comment + 5 block-comment styles)
 - ✅ FR2: Binding marker format (single-line + block form, mutual exclusion)
 - ✅ FR3: Positional exclusion (bindings inside declarative spans excluded)
 - ✅ FR4: Entry marker body (required fields, required-empty-allowed, optional)
+  - ℹ️ FR4.A (non-normative, spec v1.0.5): Field authoring quality guidance — `Also:` keyword clusters in `summary`, dual-form `tags`, verb-shaped `applies`, dual-form `seeded_questions`. Parser behavior unchanged.
 - ✅ FR5: Anchor marker body
 - ✅ FR6: Binding references (loose and strict modes, comma expansion, artifact-level)
 - ✅ FR7: ID format validation
@@ -135,6 +136,7 @@ Implements [scry-spec v1.0.3](https://github.com/prmichaelsen/scry-spec) (FR1–
 - ✅ FR10: Extension philosophy (unknown fields preserved)
 - ✅ FR11: Parsing rules (deterministic forward scan, body extraction, YAML parsing)
   - ✅ FR11.4: Relationship fields (`implements`, `supersedes`, `depends_on`) enforce array form; scalar is a parse error (spec v1.0.3)
+  - ✅ FR11.6: Host-comment closer stripping in `@scry.bind` single-line comment fields (spec v1.0.4)
   - ✅ FR11.7: Inert context detection — markers inside fenced code blocks, inline code, and JS/TS template literals produce zero records and zero diagnostics (spec v1.0.2)
 - ✅ FR12: Relationship semantics (depends_on extracted)
 - ✅ FR13: Binding semantics (any-to-any allowed)
