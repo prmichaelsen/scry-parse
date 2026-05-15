@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] — 2026-05-15
+
+### Changed
+
+- `EntryMarker.implements` type changed from `string | null` to `string[]` (FR11.4).
+- `EntryMarker.supersedes` type changed from `string | null` to `string[]` (FR11.4).
+- Scalar form for `implements` and `supersedes` is now a hard parse error (FR11.4):
+  produces a `level: 'error'` diagnostic and the entry is not indexed.
+  Array form (including single-element `[id]`) is the only accepted form.
+- `depends_on` behavior unchanged (already array form; silently ignores scalar).
+
+### Added
+
+- 5 new tests: `test-implements-array-form-ok`, `test-singleton-array-form`,
+  `test-implements-scalar-form-rejected`, `test-supersedes-scalar-form-rejected`,
+  `test-depends-on-array-form-ok`.
+
+### Migration
+
+Markers using scalar form for `implements` or `supersedes` must convert to array form:
+
+```yaml
+# Before (now a parse error)
+implements: spec.auth~abcd1234
+
+# After
+implements: [spec.auth~abcd1234]
+```
+
+## [1.0.5] — 2026-05-15
+
+### Fixed
+
+- Phantom markers no longer appear from inside fenced code blocks (`` ``` `` and `~~~`)
+  in all file types. Code blocks containing example `@scry.*` syntax are excluded.
+- Phantom markers no longer appear from inside TypeScript/JavaScript template literals
+  (multi-line backtick strings). Template literal content is tracked across lines.
+
+### Added
+
+- 6 new tests for code-construct exclusion.
+
 ## [1.0.4] — 2026-05-15
 
 ### Added

@@ -418,8 +418,8 @@ describe('validateMarker — entry', () => {
       applies: '',
       seededQuestions: [],
       dependsOn: [],
-      implements: null,
-      supersedes: null,
+      implements: [],
+      supersedes: [],
       file: 'test.md',
       span: [0, 5] as [number, number],
     };
@@ -440,8 +440,8 @@ describe('validateMarker — entry', () => {
       applies: '',
       seededQuestions: [],
       dependsOn: [],
-      implements: null,
-      supersedes: null,
+      implements: [],
+      supersedes: [],
       file: 'test.md',
       span: [0, 5] as [number, number],
     };
@@ -462,8 +462,8 @@ describe('validateMarker — entry', () => {
       applies: '',
       seededQuestions: [],
       dependsOn: [],
-      implements: null,
-      supersedes: null,
+      implements: [],
+      supersedes: [],
       file: 'test.md',
       span: [0, 5] as [number, number],
     };
@@ -546,8 +546,8 @@ weight:
     expect(result.entries).toHaveLength(1);
     const e = result.entries[0];
     expect(e.dependsOn).toEqual([]);
-    expect(e.implements).toBeNull();
-    expect(e.supersedes).toBeNull();
+    expect(e.implements).toEqual([]);
+    expect(e.supersedes).toEqual([]);
     expect(e.weight).toBeNull(); // null when not specified
   });
 });
@@ -780,8 +780,8 @@ function makeEntry(id: string, dependsOn: string[] = []): EntryMarker {
     applies: '',
     seededQuestions: [],
     dependsOn,
-    implements: null,
-    supersedes: null,
+    implements: [],
+    supersedes: [],
     extra: {},
     file: 'test.md',
     span: [0, 1],
@@ -1010,5 +1010,120 @@ describe('checkCycles — FR12', () => {
     expect(cycles).toHaveLength(1);
     expect(cycles[0]).toContain('design.x~00000001');
     expect(cycles[0]).toContain('design.y~00000002');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FR11.4: Relationship fields must be array form
+// ---------------------------------------------------------------------------
+
+describe('test-implements-array-form-ok', () => {
+  it('parses implements with two-element array form', () => {
+    const content = `<!-- @scry.entry
+id: design.test~12345678
+kind: design
+summary: Test implements array form
+status: active
+rationale:
+applies:
+seeded_questions:
+tags:
+weight:
+implements: [spec.x~aabb1122, spec.y~ccdd3344]
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].implements).toEqual(['spec.x~aabb1122', 'spec.y~ccdd3344']);
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('test-singleton-array-form', () => {
+  it('parses implements with single-element array form', () => {
+    const content = `<!-- @scry.entry
+id: design.test~12345678
+kind: design
+summary: Test singleton array form
+status: active
+rationale:
+applies:
+seeded_questions:
+tags:
+weight:
+implements: [spec.x~aabb1122]
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].implements).toEqual(['spec.x~aabb1122']);
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('test-implements-scalar-form-rejected', () => {
+  it('rejects implements with scalar (unquoted) value — FR11.4 parse error', () => {
+    const content = `<!-- @scry.entry
+id: design.test~12345678
+kind: design
+summary: Test scalar implements rejected
+status: active
+rationale:
+applies:
+seeded_questions:
+tags:
+weight:
+implements: spec.x~aabb1122
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    // Entry must not be indexed
+    expect(result.entries).toHaveLength(0);
+    // Must produce an error diagnostic mentioning FR11.4
+    const errors = result.diagnostics.filter(d => d.level === 'error');
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toMatch(/implements/);
+    expect(errors[0].message).toMatch(/FR11\.4/);
+  });
+});
+
+describe('test-supersedes-scalar-form-rejected', () => {
+  it('rejects supersedes with scalar value — FR11.4 parse error', () => {
+    const content = `<!-- @scry.entry
+id: design.test~12345678
+kind: design
+summary: Test scalar supersedes rejected
+status: active
+rationale:
+applies:
+seeded_questions:
+tags:
+weight:
+supersedes: design.old~99887766
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(0);
+    const errors = result.diagnostics.filter(d => d.level === 'error');
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toMatch(/supersedes/);
+    expect(errors[0].message).toMatch(/FR11\.4/);
+  });
+});
+
+describe('test-depends-on-array-form-ok', () => {
+  it('parses depends_on with array form — no regression', () => {
+    const content = `<!-- @scry.entry
+id: design.test~12345678
+kind: design
+summary: Test depends_on array form
+status: active
+rationale:
+applies:
+seeded_questions:
+tags:
+weight:
+depends_on: [design.a~aabb1122, design.b~ccdd3344]
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].dependsOn).toEqual(['design.a~aabb1122', 'design.b~ccdd3344']);
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
   });
 });

@@ -25,10 +25,10 @@ export interface EntryMarker {
   seededQuestions: string[];
   /** IDs of artifacts this depends on */
   dependsOn: string[];
-  /** ID of spec/design this implements */
-  implements: string | null;
-  /** ID of artifact this replaces */
-  supersedes: string | null;
+  /** IDs of specs/designs this implements (FR11.4: must be array form) */
+  implements: string[];
+  /** IDs of artifacts this replaces (FR11.4: must be array form) */
+  supersedes: string[];
   /** Unknown YAML fields preserved as-is per spec (parsers must not drop them) */
   extra: Record<string, unknown>;
   /** Source file path */
@@ -426,6 +426,29 @@ function coerceNullableString(val: unknown): string | null {
   return s === '' ? null : s;
 }
 
+/**
+ * Parse a relationship field that MUST be in array form (FR11.4).
+ * Returns the parsed string[] on success, or null on error (scalar form given).
+ * The caller is responsible for pushing the diagnostic and aborting marker construction.
+ */
+function parseRelationshipArray(
+  val: unknown,
+  fieldName: string,
+  file: string,
+  span: [number, number],
+  diagnostics: Diagnostic[],
+): string[] | null {
+  if (val == null) return [];
+  if (Array.isArray(val)) return val.map(String);
+  // Scalar form — parse error per FR11.4
+  diagnostics.push({
+    level: 'error',
+    message: `Relationship field '${fieldName}' must be an array of scry IDs, not a scalar (FR11.4) at ${file}:${span[0] + 1}`,
+    line: span[0],
+  });
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Main parser
 // ---------------------------------------------------------------------------
@@ -698,6 +721,13 @@ function parseEntryBody(
     if (!KNOWN_ENTRY_FIELDS.has(k)) extra[k] = v;
   }
 
+  // FR11.4: relationship fields must be in array form — scalar is a parse error
+  const implementsVal = parseRelationshipArray(raw['implements'], 'implements', file, span, diagnostics);
+  if (implementsVal === null) return null;
+
+  const supersedesVal = parseRelationshipArray(raw['supersedes'], 'supersedes', file, span, diagnostics);
+  if (supersedesVal === null) return null;
+
   return {
     id,
     kind,           // FR8: preserved as-authored
@@ -709,8 +739,8 @@ function parseEntryBody(
     applies: coerceStringField(raw['applies']),
     seededQuestions: coerceArrayField(raw['seeded_questions']),
     dependsOn: coerceArrayField(raw['depends_on']),
-    implements: coerceNullableString(raw['implements']),
-    supersedes: coerceNullableString(raw['supersedes']),
+    implements: implementsVal,
+    supersedes: supersedesVal,
     extra,
     file,
     span,
