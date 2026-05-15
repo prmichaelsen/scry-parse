@@ -84,8 +84,9 @@ interface EntryMarker {
   applies: string;
   seededQuestions: string[];
   dependsOn: string[];
-  implements: string | null;
-  supersedes: string | null;
+  implements: string[];      // FR11.4: array form only; scalar is a parse error
+  supersedes: string[];      // FR11.4: array form only; scalar is a parse error
+  extra: Record<string, unknown>; // FR10: unknown fields preserved
   file: string;
   span: [number, number]; // [startLine, endLine], 0-indexed
 }
@@ -133,6 +134,8 @@ Implements [scry-spec v1.0](https://github.com/prmichaelsen/scry-spec) (FR1–FR
 - ✅ FR9: Status (unknown values preserved as-authored)
 - ✅ FR10: Extension philosophy (unknown fields preserved)
 - ✅ FR11: Parsing rules (deterministic forward scan, body extraction, YAML parsing)
+  - ✅ FR11.4: Relationship fields (`implements`, `supersedes`) enforce array form; scalar is a parse error
+  - ✅ FR11.7: Inert context detection — markers inside fenced code blocks, inline code, and JS/TS template literals are not extracted
 - ✅ FR12: Relationship semantics (depends_on extracted)
 - ✅ FR13: Binding semantics (any-to-any allowed)
 - ✅ FR14: Soft references (not parsed — spec-correct)
