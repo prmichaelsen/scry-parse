@@ -5,6 +5,7 @@
  *   - parseMarkers(content, file?, language?) → ParseResult
  *   - validateMarker(marker) → ValidationResult
  *   - mintId(kind, name, content?) → string
+ *   - checkCycles(entries) → string[][] (FR12: cycle detection)
  *
  * Types:
  *   - EntryMarker, AnchorMarker, BindingMarker
@@ -20,6 +21,7 @@
 export { parseMarkers } from './markers.js';
 export { validateMarker } from './validate.js';
 export { mintId } from './mint.js';
+export { checkCycles } from './cycles.js';
 
 // Types from markers
 export type {

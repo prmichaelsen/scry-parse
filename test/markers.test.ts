@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import type { EntryMarker } from '../src/markers.js';
+import { checkCycles } from '../src/cycles.js';
 import { parseMarkers } from '../src/markers.js';
 import { validateMarker } from '../src/validate.js';
 import { mintId } from '../src/mint.js';
@@ -758,5 +760,116 @@ describe('Unknown YAML field preservation', () => {
 # @scry.entry.end`;
     const result = parseMarkers(content, 'test.md');
     expect(result.entries[0].extra).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// checkCycles (FR12: relationship semantics)
+// ---------------------------------------------------------------------------
+
+/** Minimal EntryMarker stub for cycle tests (only id and dependsOn matter). */
+function makeEntry(id: string, dependsOn: string[] = []): EntryMarker {
+  return {
+    id,
+    kind: 'design',
+    summary: '',
+    status: 'active',
+    weight: null,
+    tags: [],
+    rationale: '',
+    applies: '',
+    seededQuestions: [],
+    dependsOn,
+    implements: null,
+    supersedes: null,
+    extra: {},
+    file: 'test.md',
+    span: [0, 1],
+  };
+}
+
+describe('checkCycles — FR12', () => {
+  it('returns empty array when given no entries', () => {
+    expect(checkCycles([])).toEqual([]);
+  });
+
+  it('returns empty array when no depends_on relationships', () => {
+    const entries = [
+      makeEntry('design.a~00000001'),
+      makeEntry('design.b~00000002'),
+      makeEntry('design.c~00000003'),
+    ];
+    expect(checkCycles(entries)).toEqual([]);
+  });
+
+  it('returns empty array for a valid linear chain A→B→C', () => {
+    const entries = [
+      makeEntry('design.a~00000001', ['design.b~00000002']),
+      makeEntry('design.b~00000002', ['design.c~00000003']),
+      makeEntry('design.c~00000003'),
+    ];
+    expect(checkCycles(entries)).toEqual([]);
+  });
+
+  it('detects a self-loop A→A', () => {
+    const entries = [
+      makeEntry('design.a~00000001', ['design.a~00000001']),
+    ];
+    const cycles = checkCycles(entries);
+    expect(cycles).toHaveLength(1);
+    expect(cycles[0]).toContain('design.a~00000001');
+  });
+
+  it('detects a simple two-node cycle A→B→A', () => {
+    const entries = [
+      makeEntry('design.a~00000001', ['design.b~00000002']),
+      makeEntry('design.b~00000002', ['design.a~00000001']),
+    ];
+    const cycles = checkCycles(entries);
+    expect(cycles).toHaveLength(1);
+    // Cycle should contain both IDs
+    expect(cycles[0]).toContain('design.a~00000001');
+    expect(cycles[0]).toContain('design.b~00000002');
+    // Last element repeats the start (cycle closed)
+    const cycle = cycles[0];
+    expect(cycle[0]).toBe(cycle[cycle.length - 1]);
+  });
+
+  it('detects a three-node cycle A→B→C→A', () => {
+    const entries = [
+      makeEntry('design.a~00000001', ['design.b~00000002']),
+      makeEntry('design.b~00000002', ['design.c~00000003']),
+      makeEntry('design.c~00000003', ['design.a~00000001']),
+    ];
+    const cycles = checkCycles(entries);
+    expect(cycles).toHaveLength(1);
+    const cycle = cycles[0];
+    expect(cycle).toContain('design.a~00000001');
+    expect(cycle).toContain('design.b~00000002');
+    expect(cycle).toContain('design.c~00000003');
+    expect(cycle[0]).toBe(cycle[cycle.length - 1]);
+  });
+
+  it('returns empty when depends_on references IDs outside the input set', () => {
+    // External references are ignored (not in knownIds)
+    const entries = [
+      makeEntry('design.a~00000001', ['design.external~99999999']),
+    ];
+    expect(checkCycles(entries)).toEqual([]);
+  });
+
+  it('handles disconnected components: one cyclic, one acyclic', () => {
+    const entries = [
+      // Cyclic component
+      makeEntry('design.x~00000001', ['design.y~00000002']),
+      makeEntry('design.y~00000002', ['design.x~00000001']),
+      // Acyclic component
+      makeEntry('design.p~00000003', ['design.q~00000004']),
+      makeEntry('design.q~00000004'),
+    ];
+    const cycles = checkCycles(entries);
+    expect(cycles).toHaveLength(1);
+    expect(cycles[0]).toContain('design.x~00000001');
+    expect(cycles[0]).toContain('design.y~00000002');
   });
 });

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] — 2026-05-15
+
+### Added
+
+- `checkCycles(entries): string[][]` — FR12 cycle detection for `depends_on` graphs.
+  DFS with 3-color marking; returns all cycles as ID arrays. External references
+  (IDs not in input set) are ignored per spec.
+- 10 new tests for cycle detection: no deps, linear chain, self-cycle, simple cycle,
+  transitive cycle, disconnected components, external refs ignored, multiple cycles,
+  diamond (no cycle), and empty input.
+
+### Changed
+
+- Exported `checkCycles` from package entry point.
+
 ## [1.0.1] — 2026-05-14
 
 ### Fixed
