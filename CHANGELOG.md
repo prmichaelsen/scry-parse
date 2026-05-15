@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] — 2026-05-15
+
+### Fixed
+
+- `depends_on` scalar form is now a hard parse error (FR11.4 consistency fix).
+  Previously a scalar `depends_on` value was silently coerced to `[]`, losing the
+  declared dependency without any diagnostic. Now consistent with `implements` and
+  `supersedes`: scalar form produces a `level: 'error'` diagnostic and the entry
+  is not indexed.
+
+### Added
+
+- 1 new test: `test-depends-on-scalar-form-rejected`.
+
 ## [1.0.6] — 2026-05-15
 
 ### Changed
@@ -14,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scalar form for `implements` and `supersedes` is now a hard parse error (FR11.4):
   produces a `level: 'error'` diagnostic and the entry is not indexed.
   Array form (including single-element `[id]`) is the only accepted form.
-- `depends_on` behavior unchanged (already array form; silently ignores scalar).
+- `depends_on` behavior unchanged in this release (scalar silently ignored; fixed in v1.0.7).
 
 ### Added
 

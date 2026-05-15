@@ -722,6 +722,9 @@ function parseEntryBody(
   }
 
   // FR11.4: relationship fields must be in array form — scalar is a parse error
+  const dependsOnVal = parseRelationshipArray(raw['depends_on'], 'depends_on', file, span, diagnostics);
+  if (dependsOnVal === null) return null;
+
   const implementsVal = parseRelationshipArray(raw['implements'], 'implements', file, span, diagnostics);
   if (implementsVal === null) return null;
 
@@ -738,7 +741,7 @@ function parseEntryBody(
     rationale: coerceStringField(raw['rationale']),
     applies: coerceStringField(raw['applies']),
     seededQuestions: coerceArrayField(raw['seeded_questions']),
-    dependsOn: coerceArrayField(raw['depends_on']),
+    dependsOn: dependsOnVal,
     implements: implementsVal,
     supersedes: supersedesVal,
     extra,

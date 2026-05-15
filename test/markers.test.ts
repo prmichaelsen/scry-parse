@@ -1127,3 +1127,28 @@ depends_on: [design.a~aabb1122, design.b~ccdd3344]
     expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
   });
 });
+
+describe('test-depends-on-scalar-form-rejected', () => {
+  it('rejects depends_on with scalar value — FR11.4 parse error', () => {
+    const content = `<!-- @scry.entry
+id: design.test~12345678
+kind: design
+summary: Test scalar depends_on rejected
+status: active
+rationale:
+applies:
+seeded_questions:
+tags:
+weight:
+depends_on: design.a~aabb1122
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    // Entry must not be indexed (dependency would be silently dropped otherwise)
+    expect(result.entries).toHaveLength(0);
+    // Must produce an error diagnostic mentioning FR11.4
+    const errors = result.diagnostics.filter(d => d.level === 'error');
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toMatch(/depends_on/);
+    expect(errors[0].message).toMatch(/FR11\.4/);
+  });
+});
