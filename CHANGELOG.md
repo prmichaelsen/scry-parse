@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] — 2026-05-15
+
+### Conformance
+
+- scry-spec v1.0.4 — FR11.6 clarification: single-line `@scry.bind` comment field MUST have
+  host-language comment closing delimiters stripped (` -->` in HTML comments, ` */` in C-style
+  block comments). Implementation was already correct via `extractSentinelContent`; no behavior
+  change.
+
+### Tests
+
+- Tests 23–24 added per spec v1.0.4: explicit assertions that ` -->` and ` */` do not appear
+  in the `comment` field for HTML-comment-hosted and C-style-block-comment-hosted single-line
+  bindings.
+
 ## [1.0.8] — 2026-05-15
 
 ### Changed

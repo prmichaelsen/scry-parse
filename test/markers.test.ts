@@ -1160,3 +1160,59 @@ depends_on: design.a~aabb1122
     expect(errors[0].message).toMatch(/FR11\.4/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Test 23: HTML comment closing delimiter stripped from single-line binding comment
+// ---------------------------------------------------------------------------
+describe('Test 23: HTML comment closing delimiter stripped from single-line binding', () => {
+  it('strips trailing --> from comment field (FR11.6)', () => {
+    const content = `<!-- @scry.bind autopoiesis-observed~86289424 internal.autopoietic-reflect~79313e48 the autopoietic property, defined there, observed here in operation -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.bindings).toHaveLength(1);
+    expect(result.bindings[0].localId).toBe('autopoiesis-observed~86289424');
+    expect(result.bindings[0].ref).toBe('internal.autopoietic-reflect~79313e48');
+    // comment must carry only authored content — no trailing -->
+    expect(result.bindings[0].comment).toBe('the autopoietic property, defined there, observed here in operation');
+    expect(result.bindings[0].comment).not.toContain('-->');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 24: C-style block comment closing delimiter stripped from single-line binding
+// ---------------------------------------------------------------------------
+describe('Test 24: C-style block comment closing delimiter stripped from single-line binding', () => {
+  it('strips trailing */ from comment field (FR11.6)', () => {
+    const content = `/* @scry.bind impl~aabbccdd spec.auth~abcd1234#FR3 partial impl, OAuth pending */`;
+    const result = parseMarkers(content, 'test.c');
+    expect(result.bindings).toHaveLength(1);
+    expect(result.bindings[0].localId).toBe('impl~aabbccdd');
+    expect(result.bindings[0].ref).toBe('spec.auth~abcd1234#FR3');
+    // comment must carry only authored content — no trailing */
+    expect(result.bindings[0].comment).toBe('partial impl, OAuth pending');
+    expect(result.bindings[0].comment).not.toContain('*/');
+  });
+});
+
+// Test 23: HTML comment closing delimiter stripped from single-line binding comment (FR11.6 v1.0.4)
+describe('test-23-html-comment-closer-stripped', () => {
+  it('strips trailing --> from single-line bind comment — FR11.6 spec v1.0.4', () => {
+    const content = `<!-- @scry.bind autopoiesis-observed~86289424 internal.autopoietic-reflect~79313e48 the autopoietic property, defined there, observed here in operation -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.bindings).toHaveLength(1);
+    expect(result.bindings[0].localId).toBe('autopoiesis-observed~86289424');
+    expect(result.bindings[0].ref).toBe('internal.autopoietic-reflect~79313e48');
+    expect(result.bindings[0].comment).toBe('the autopoietic property, defined there, observed here in operation');
+  });
+});
+
+// Test 24: C-style block comment closing delimiter stripped from single-line binding comment (FR11.6 v1.0.4)
+describe('test-24-c-block-comment-closer-stripped', () => {
+  it('strips trailing */ from single-line bind comment — FR11.6 spec v1.0.4', () => {
+    const content = `/* @scry.bind impl~aabbccdd spec.auth~abcd1234#FR3 partial impl, OAuth pending */`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.bindings).toHaveLength(1);
+    expect(result.bindings[0].localId).toBe('impl~aabbccdd');
+    expect(result.bindings[0].ref).toBe('spec.auth~abcd1234#FR3');
+    expect(result.bindings[0].comment).toBe('partial impl, OAuth pending');
+  });
+});
