@@ -788,6 +788,145 @@ function makeEntry(id: string, dependsOn: string[] = []): EntryMarker {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Code-construct exclusion — phantom marker prevention
+// ---------------------------------------------------------------------------
+
+describe('markdown-code-fence-marker-ignored', () => {
+  it('ignores markers inside a fenced code block (backtick fence)', () => {
+    const content = [
+      'Some prose here.',
+      '',
+      '```typescript',
+      '<!-- @scry.entry',
+      'id: design.example~12345678',
+      'kind: design',
+      'summary: Example marker in code block',
+      'status: active',
+      'rationale:',
+      'applies:',
+      'seeded_questions:',
+      'tags:',
+      'weight:',
+      '@scry.entry.end -->',
+      '```',
+      '',
+      'More prose.',
+    ].join('\n');
+    const result = parseMarkers(content, 'example.md');
+    expect(result.entries).toHaveLength(0);
+    expect(result.anchors).toHaveLength(0);
+    expect(result.bindings).toHaveLength(0);
+  });
+
+  it('ignores markers inside a tilde-fenced code block', () => {
+    const content = [
+      '~~~python',
+      '# @scry.entry',
+      '# id: code.fn~aabbccdd',
+      '# kind: code',
+      '# summary: Phantom',
+      '# status: active',
+      '# @scry.entry.end',
+      '~~~',
+    ].join('\n');
+    const result = parseMarkers(content, 'example.md');
+    expect(result.entries).toHaveLength(0);
+  });
+
+  it('still parses markers outside the fenced block', () => {
+    const content = [
+      '```',
+      '# @scry.entry',
+      '# id: code.inside~aabbccdd',
+      '# kind: code',
+      '# summary: Inside',
+      '# status: active',
+      '# @scry.entry.end',
+      '```',
+      '<!-- @scry.entry',
+      'id: design.outside~12345678',
+      'kind: design',
+      'summary: Outside the fence',
+      'status: active',
+      'rationale:',
+      'applies:',
+      'seeded_questions:',
+      'tags:',
+      'weight:',
+      '@scry.entry.end -->',
+    ].join('\n');
+    const result = parseMarkers(content, 'example.md');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('design.outside~12345678');
+  });
+});
+
+describe('markdown-inline-code-marker-ignored', () => {
+  it('does not parse a marker that is inside an inline code span', () => {
+    const content = [
+      'Use `@scry.anchor foo~abcd1234` to reference a named anchor point.',
+      'Also see `@scry.bind impl~12345678 spec.foo~abcdef01` for binding syntax.',
+    ].join('\n');
+    const result = parseMarkers(content, 'example.md');
+    expect(result.anchors).toHaveLength(0);
+    expect(result.bindings).toHaveLength(0);
+    expect(result.entries).toHaveLength(0);
+  });
+});
+
+describe('typescript-template-literal-marker-ignored', () => {
+  it('ignores markers inside a multi-line template literal', () => {
+    const content = [
+      "import { parseMarkers } from '../src/markers.js';",
+      '',
+      'describe("test", () => {',
+      '  it("parses entry", () => {',
+      '    const content = `# @scry.entry',
+      '# id: code.func1~aaaa1111',
+      '# kind: code',
+      '# summary: Function 1',
+      '# status: active',
+      '# rationale:',
+      '# applies:',
+      '# seeded_questions:',
+      '# tags:',
+      '# weight:',
+      '# @scry.entry.end',
+      'def func1(): pass`;',
+      '    const result = parseMarkers(content, "test.py");',
+      '    expect(result.entries).toHaveLength(1);',
+      '  });',
+      '});',
+    ].join('\n');
+    const result = parseMarkers(content, 'test.ts');
+    expect(result.entries).toHaveLength(0);
+    expect(result.anchors).toHaveLength(0);
+    expect(result.bindings).toHaveLength(0);
+  });
+
+  it('still parses real markers outside template literals in .ts files', () => {
+    const content = [
+      '// @scry.entry',
+      '// id: code.real~cafebabe',
+      '// kind: code',
+      '// summary: Real marker outside template literal',
+      '// status: active',
+      '// rationale:',
+      '// applies:',
+      '// seeded_questions:',
+      '// tags:',
+      '// weight:',
+      '// @scry.entry.end',
+      'const fixture = `# @scry.entry`,',
+      'export function realFunc() {}',
+    ].join('\n');
+    const result = parseMarkers(content, 'src/real.ts');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('code.real~cafebabe');
+  });
+});
+
 describe('checkCycles — FR12', () => {
   it('returns empty array when given no entries', () => {
     expect(checkCycles([])).toEqual([]);

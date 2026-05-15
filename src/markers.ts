@@ -247,6 +247,137 @@ function expandRef(ref: string, mode: 'loose' | 'strict'): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Code-construct exclusion (phantom marker prevention)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the set of line indices that MUST be skipped during sentinel matching.
+ * Lines inside code constructs contain example/documentation syntax, not real markers.
+ *
+ * Handles:
+ *   - Fenced code blocks (``` and ~~~, any language tag) — all file types
+ *   - Template literals (backtick strings, multi-line) — .ts, .tsx, .js, .jsx
+ */
+function computeExcludedLines(lines: string[], file: string): Set<number> {
+  const excluded = new Set<number>();
+  const ext = (file.split('.').pop() ?? '').toLowerCase();
+
+  // --- Fenced code blocks (all file types) ---
+  let inFence = false;
+  let fenceChar = '';
+  let fenceMinLen = 3;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trimStart();
+    if (!inFence) {
+      const m = /^(`{3,}|~{3,})/.exec(trimmed);
+      if (m) {
+        inFence = true;
+        fenceChar = m[1][0];
+        fenceMinLen = m[1].length;
+        excluded.add(i); // opener line
+      }
+    } else {
+      excluded.add(i);
+      // Closer: same char, same or greater count, nothing after
+      const m = /^(`{3,}|~{3,})\s*$/.exec(trimmed);
+      if (m && m[1][0] === fenceChar && m[1].length >= fenceMinLen) {
+        inFence = false;
+      }
+    }
+  }
+
+  // --- JS/TS: template literals ---
+  if (['ts', 'tsx', 'js', 'jsx'].includes(ext)) {
+    excludeJsTemplateLiterals(lines, excluded);
+  }
+
+  return excluded;
+}
+
+/**
+ * Mark lines inside JavaScript/TypeScript template literals as excluded.
+ * Template literals (backtick strings) can span multiple lines; lines where
+ * @scry. syntax appears inside a template literal must not yield markers.
+ *
+ * Single/double-quoted strings don't span lines in standard JS/TS, so they
+ * are tracked per-line only to avoid false-positive context bleed.
+ *
+ * Limitation: nested template literals inside ${} expressions are not
+ * recursively tracked. Adequate for the common case of test-fixture strings.
+ */
+function excludeJsTemplateLiterals(lines: string[], excluded: Set<number>): void {
+  let inTemplate = false;
+  let templateDepth = 0; // ${} nesting depth inside a template literal
+  let inBlockComment = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    // Lines that START inside a template literal are unconditionally excluded
+    if (inTemplate && templateDepth === 0) {
+      excluded.add(i);
+    }
+
+    const line = lines[i];
+    let j = 0;
+    let inLineComment = false;
+    let inDouble = false;
+    let inSingle = false;
+
+    while (j < line.length) {
+      if (inLineComment) break;
+
+      if (inBlockComment) {
+        if (line[j] === '*' && line[j + 1] === '/') { inBlockComment = false; j += 2; }
+        else j++;
+        continue;
+      }
+
+      // Escape sequences inside any string
+      if ((inTemplate || inDouble || inSingle) && line[j] === '\\') { j += 2; continue; }
+
+      // --- Inside template literal ---
+      if (inTemplate) {
+        if (line[j] === '`') {
+          inTemplate = false;
+        } else if (line[j] === '$' && line[j + 1] === '{') {
+          templateDepth++;
+          j += 2;
+          continue;
+        } else if (templateDepth > 0 && line[j] === '}') {
+          templateDepth--;
+        }
+        j++;
+        continue;
+      }
+
+      // --- Inside double/single quoted string ---
+      if (inDouble) { if (line[j] === '"') inDouble = false; j++; continue; }
+      if (inSingle) { if (line[j] === "'") inSingle = false; j++; continue; }
+
+      // --- Outside all strings ---
+      if (line[j] === '/' && line[j + 1] === '/') { inLineComment = true; break; }
+      if (line[j] === '/' && line[j + 1] === '*') { inBlockComment = true; j += 2; continue; }
+      if (line[j] === '`') {
+        inTemplate = true;
+        templateDepth = 0;
+        // If @scry. appears after the opening backtick on this line,
+        // the opening line itself is excluded (its @scry. content is inside the literal)
+        if (line.slice(j + 1).includes('@scry.')) {
+          excluded.add(i);
+        }
+        j++;
+        continue;
+      }
+      if (line[j] === '"') { inDouble = true; j++; continue; }
+      if (line[j] === "'") { inSingle = true; j++; continue; }
+      j++;
+    }
+
+    // inTemplate carries across lines; inDouble/inSingle reset (don't span lines in JS/TS)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Span tracking helpers
 // ---------------------------------------------------------------------------
 
@@ -317,6 +448,9 @@ export function parseMarkers(
   const bindings: BindingMarker[] = [];
   const diagnostics: Diagnostic[] = [];
 
+  // Pre-compute lines that must not yield markers (code blocks, string literals)
+  const excludedLines = computeExcludedLines(lines, file);
+
   // First pass: find all declarative spans so we can apply FR3
   const declarativeSpans: DeclarativeSpan[] = [];
 
@@ -332,6 +466,7 @@ export function parseMarkers(
   {
     let j = 0;
     while (j < lines.length) {
+      if (excludedLines.has(j)) { j++; continue; }
       const line = lines[j];
       const declOpen = matchDeclarativeOpen(line);
       if (declOpen) {
@@ -354,6 +489,7 @@ export function parseMarkers(
 
   // Main parse pass
   while (i < lines.length) {
+    if (excludedLines.has(i)) { i++; continue; }
     const line = lines[i];
 
     // --- Declarative markers ---
