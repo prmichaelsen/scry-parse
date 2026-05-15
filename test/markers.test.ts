@@ -817,6 +817,8 @@ describe('markdown-code-fence-marker-ignored', () => {
     expect(result.entries).toHaveLength(0);
     expect(result.anchors).toHaveLength(0);
     expect(result.bindings).toHaveLength(0);
+    // FR11.7 (spec v1.0.2): inert-region markers MUST NOT emit diagnostics
+    expect(result.diagnostics).toHaveLength(0);
   });
 
   it('ignores markers inside a tilde-fenced code block', () => {
@@ -832,6 +834,8 @@ describe('markdown-code-fence-marker-ignored', () => {
     ].join('\n');
     const result = parseMarkers(content, 'example.md');
     expect(result.entries).toHaveLength(0);
+    // FR11.7 (spec v1.0.2): inert-region markers MUST NOT emit diagnostics
+    expect(result.diagnostics).toHaveLength(0);
   });
 
   it('still parses markers outside the fenced block', () => {
@@ -872,6 +876,8 @@ describe('markdown-inline-code-marker-ignored', () => {
     expect(result.anchors).toHaveLength(0);
     expect(result.bindings).toHaveLength(0);
     expect(result.entries).toHaveLength(0);
+    // FR11.7 (spec v1.0.2): inert-region markers MUST NOT emit diagnostics
+    expect(result.diagnostics).toHaveLength(0);
   });
 });
 
@@ -903,6 +909,8 @@ describe('typescript-template-literal-marker-ignored', () => {
     expect(result.entries).toHaveLength(0);
     expect(result.anchors).toHaveLength(0);
     expect(result.bindings).toHaveLength(0);
+    // FR11.7 (spec v1.0.2): inert-region markers MUST NOT emit diagnostics
+    expect(result.diagnostics).toHaveLength(0);
   });
 
   it('still parses real markers outside template literals in .ts files', () => {

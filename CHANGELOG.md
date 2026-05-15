@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] — 2026-05-15
+
+### Changed
+
+- Updated spec conformance claim to scry-spec v1.0.3 in README.
+- FR11.7 note in README now explicitly states the normative v1.0.2 "Behavior on match" clause:
+  inert-region markers produce zero records AND zero diagnostics.
+- FR11.4 note in README now covers `depends_on` (added in v1.0.7) alongside `implements`/`supersedes`.
+
+### Tests
+
+- Added `expect(result.diagnostics).toHaveLength(0)` assertions to 4 inert-context tests
+  (backtick fence, tilde fence, inline code span, JS/TS template literal), verifying the
+  normative FR11.7 v1.0.2 "MUST NOT emit diagnostics" clause. Behavior unchanged; tests
+  now make conformance explicit.
+
 ## [1.0.7] — 2026-05-15
 
 ### Fixed

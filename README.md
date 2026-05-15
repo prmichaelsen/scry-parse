@@ -1,6 +1,6 @@
 # scry-parse
 
-TypeScript parser for [scry-spec v1.0](https://github.com/prmichaelsen/scry-spec) markers.
+TypeScript parser for [scry-spec v1.0.3](https://github.com/prmichaelsen/scry-spec) markers.
 
 Parse, validate, and mint `@scry.entry`, `@scry.anchor`, and `@scry.bind` markers from any source file.
 
@@ -121,7 +121,7 @@ BASELINE_STATUSES // ['draft', 'active', 'deprecated']
 
 ## Spec conformance
 
-Implements [scry-spec v1.0](https://github.com/prmichaelsen/scry-spec) (FR1–FR14):
+Implements [scry-spec v1.0.3](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR11.4/FR11.7 as clarified in v1.0.2–v1.0.3):
 
 - ✅ FR1: Declarative marker sentinel syntax (5 line-comment + 5 block-comment styles)
 - ✅ FR2: Binding marker format (single-line + block form, mutual exclusion)
@@ -134,8 +134,8 @@ Implements [scry-spec v1.0](https://github.com/prmichaelsen/scry-spec) (FR1–FR
 - ✅ FR9: Status (unknown values preserved as-authored)
 - ✅ FR10: Extension philosophy (unknown fields preserved)
 - ✅ FR11: Parsing rules (deterministic forward scan, body extraction, YAML parsing)
-  - ✅ FR11.4: Relationship fields (`implements`, `supersedes`) enforce array form; scalar is a parse error
-  - ✅ FR11.7: Inert context detection — markers inside fenced code blocks, inline code, and JS/TS template literals are not extracted
+  - ✅ FR11.4: Relationship fields (`implements`, `supersedes`, `depends_on`) enforce array form; scalar is a parse error (spec v1.0.3)
+  - ✅ FR11.7: Inert context detection — markers inside fenced code blocks, inline code, and JS/TS template literals produce zero records and zero diagnostics (spec v1.0.2)
 - ✅ FR12: Relationship semantics (depends_on extracted)
 - ✅ FR13: Binding semantics (any-to-any allowed)
 - ✅ FR14: Soft references (not parsed — spec-correct)
