@@ -1,6 +1,6 @@
 # scry-parse
 
-TypeScript parser for [scry-spec v1.0.5](https://github.com/prmichaelsen/scry-spec) markers.
+TypeScript parser for [scry-spec v1.1.0](https://github.com/prmichaelsen/scry-spec) markers.
 
 Parse, validate, and mint `@scry.entry`, `@scry.anchor`, and `@scry.bind` markers from any source file.
 
@@ -86,10 +86,14 @@ interface EntryMarker {
   dependsOn: string[];
   implements: string[];      // FR11.4: array form only; scalar is a parse error
   supersedes: string[];      // FR11.4: array form only; scalar is a parse error
+  extras: ExtrasMap | null;  // FR4.B (v1.1): structured metadata; null when undeclared
   extra: Record<string, unknown>; // FR10: unknown fields preserved
   file: string;
   span: [number, number]; // [startLine, endLine], 0-indexed
 }
+
+type ExtrasValue = string | number | boolean | null;
+type ExtrasMap = Record<string, ExtrasValue>;
 
 interface AnchorMarker {
   name: string;        // anchor-id: {name}~{hash}
@@ -121,13 +125,14 @@ BASELINE_STATUSES // ['draft', 'active', 'deprecated']
 
 ## Spec conformance
 
-Implements [scry-spec v1.0.5](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR11.4/FR11.6/FR11.7 as clarified in v1.0.2–v1.0.5):
+Implements [scry-spec v1.1.0](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR4.A/FR4.B/FR11.4/FR11.6/FR11.7 as clarified in v1.0.2–v1.1.0):
 
 - ✅ FR1: Declarative marker sentinel syntax (5 line-comment + 5 block-comment styles)
 - ✅ FR2: Binding marker format (single-line + block form, mutual exclusion)
 - ✅ FR3: Positional exclusion (bindings inside declarative spans excluded)
 - ✅ FR4: Entry marker body (required fields, required-empty-allowed, optional)
   - ℹ️ FR4.A (non-normative, spec v1.0.5): Field authoring quality guidance — `Also:` keyword clusters in `summary`, dual-form `tags`, verb-shaped `applies`, dual-form `seeded_questions`. Parser behavior unchanged.
+  - ✅ FR4.B (spec v1.1.0): Structured `extras` metadata field — flat string-keyed map of `string | number | boolean | null` scalars. Recognized as a known field; preserved structurally via `EntryMarker.extras`. Diagnostics emitted (informational) for empty map, non-mapping shape, nested map / list values, and serialized size above the 4096-byte cap. Payload never truncated.
 - ✅ FR5: Anchor marker body
 - ✅ FR6: Binding references (loose and strict modes, comma expansion, artifact-level)
 - ✅ FR7: ID format validation

@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-05-19
+
+### Conformance
+
+- **scry-spec v1.1.0** — declares conformance against the new spec head.
+- **FR4.B (Extras Field — Structured Metadata)** — new optional `extras`
+  field on `@scry.entry` markers. Recognized as a known field (no longer
+  passed through the FR11.5 unknown-field bucket). Structurally preserved
+  as a `Record<string, string | number | boolean | null>` so downstream
+  consumers can index it.
+
+### Added
+
+- `EntryMarker.extras: ExtrasMap | null` — `null` when the marker did
+  not declare `extras`; a `Record<string, ExtrasValue>` otherwise.
+- New exported types `ExtrasValue` and `ExtrasMap` for downstream
+  TypeScript consumers.
+- Diagnostics (informational warnings, per FR4.B SHOULD-level):
+  - `extras` present but empty (`{}`)
+  - `extras` declared with `null` value
+  - non-mapping top-level shape (scalar, list) — coerced to empty map
+  - non-scalar values (nested map, list) — preserved structurally
+  - serialized payload above the 4 KB cap — preserved (MUST NOT truncate)
+
+### Backward compatibility
+
+Additive change. Markers without `extras` continue to parse with
+`extras: null`. The previously-existing `entry.extra` unknown-field
+bucket retains the same shape and is unaffected for all other unknown
+fields; only the `extras` key itself was promoted out of it.
+
+### Tests
+
+- 8 new tests covering: field absence, flat-scalar happy path
+  (string/number/boolean/null), empty-map diagnostic, nested-map
+  diagnostic, list-value diagnostic, 4 KB size-cap diagnostic,
+  scalar-at-top-level diagnostic, and promotion out of the unknown
+  bucket. Total: 74/74 passing.
+
 ## [1.0.9] — 2026-05-15
 
 ### Conformance

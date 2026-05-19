@@ -782,6 +782,7 @@ function makeEntry(id: string, dependsOn: string[] = []): EntryMarker {
     dependsOn,
     implements: [],
     supersedes: [],
+    extras: null,
     extra: {},
     file: 'test.md',
     span: [0, 1],
@@ -1214,5 +1215,178 @@ describe('test-24-c-block-comment-closer-stripped', () => {
     expect(result.bindings[0].localId).toBe('impl~aabbccdd');
     expect(result.bindings[0].ref).toBe('spec.auth~abcd1234#FR3');
     expect(result.bindings[0].comment).toBe('partial impl, OAuth pending');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FR4.B: Extras Field — Structured Metadata (scry-spec v1.1.0)
+// ---------------------------------------------------------------------------
+describe('FR4.B: extras field — absent', () => {
+  it('extras is null when not declared on the marker', () => {
+    const content = `<!-- @scry.entry
+id: design.no-extras~12345678
+kind: design
+summary: No extras field
+status: active
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].extras).toBeNull();
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('FR4.B: extras field — flat scalar map', () => {
+  it('parses string/number/boolean/null scalars structurally', () => {
+    const content = `<!-- @scry.entry
+id: deliverable.intake-page~a1b2c3d4
+kind: report
+summary: Deliverable record with measurements
+status: active
+extras:
+  cost_usd: 7.42
+  wakes: 5
+  model: "opus-4.7"
+  converged: true
+  pending_field: null
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    const e = result.entries[0];
+    expect(e.extras).not.toBeNull();
+    expect(e.extras).toEqual({
+      cost_usd: 7.42,
+      wakes: 5,
+      model: 'opus-4.7',
+      converged: true,
+      pending_field: null,
+    });
+    // FR4.B: extras is promoted out of the unknown-field bucket
+    expect(e.extra['extras']).toBeUndefined();
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+    expect(result.diagnostics.filter(d => d.level === 'warning' && d.message.includes('extras'))).toHaveLength(0);
+  });
+});
+
+describe('FR4.B: extras field — empty map emits diagnostic', () => {
+  it('warns when extras is present but empty ({})', () => {
+    const content = `<!-- @scry.entry
+id: design.empty-extras~12345678
+kind: design
+summary: Empty extras
+status: active
+extras: {}
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].extras).toEqual({});
+    const warnings = result.diagnostics.filter(d => d.level === 'warning' && /empty/i.test(d.message));
+    expect(warnings.length).toBeGreaterThanOrEqual(1);
+    // No errors — extras is optional, the diagnostic is informational
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('FR4.B: extras field — nested map emits diagnostic, preserved structurally', () => {
+  it('warns on nested-map value and preserves it', () => {
+    const content = `<!-- @scry.entry
+id: design.nested-extras~12345678
+kind: design
+summary: Nested extras
+status: active
+extras:
+  cost:
+    usd: 0.42
+    eur: 0.39
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    const warnings = result.diagnostics.filter(d => d.level === 'warning' && /non-scalar/i.test(d.message));
+    expect(warnings.length).toBeGreaterThanOrEqual(1);
+    // Preserved structurally per FR4.B
+    expect((result.entries[0].extras as Record<string, unknown>)['cost']).toEqual({ usd: 0.42, eur: 0.39 });
+    // No errors — the warning is informational only
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('FR4.B: extras field — list value emits diagnostic, preserved structurally', () => {
+  it('warns on list value and preserves it', () => {
+    const content = `<!-- @scry.entry
+id: design.list-extras~12345678
+kind: design
+summary: List extras
+status: active
+extras:
+  models: ["opus", "sonnet"]
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    const warnings = result.diagnostics.filter(d => d.level === 'warning' && /non-scalar/i.test(d.message));
+    expect(warnings.length).toBeGreaterThanOrEqual(1);
+    expect((result.entries[0].extras as Record<string, unknown>)['models']).toEqual(['opus', 'sonnet']);
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('FR4.B: extras field — 4KB size cap diagnostic', () => {
+  it('warns when serialized extras exceeds 4096 bytes; preserves payload', () => {
+    // Author a single ~5 KB string value — well over the cap.
+    const big = 'x'.repeat(5000);
+    const content = `<!-- @scry.entry
+id: design.big-extras~12345678
+kind: design
+summary: Oversized extras
+status: active
+extras:
+  blob: "${big}"
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    // Payload preserved (MUST NOT truncate per FR4.B)
+    expect((result.entries[0].extras as Record<string, unknown>)['blob']).toBe(big);
+    const warnings = result.diagnostics.filter(d => d.level === 'warning' && /4096-byte cap/.test(d.message));
+    expect(warnings.length).toBe(1);
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('FR4.B: extras field — non-mapping top-level shape', () => {
+  it('warns and coerces to empty map when extras is a scalar', () => {
+    const content = `<!-- @scry.entry
+id: design.scalar-extras~12345678
+kind: design
+summary: Scalar extras
+status: active
+extras: "not a map"
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].extras).toEqual({});
+    const warnings = result.diagnostics.filter(d => d.level === 'warning' && /must be a YAML mapping/i.test(d.message));
+    expect(warnings.length).toBe(1);
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0);
+  });
+});
+
+describe('FR4.B: extras field — backward compat with unknown-field bucket', () => {
+  it('extras stays out of the unknown-field bucket (promoted to known)', () => {
+    const content = `<!-- @scry.entry
+id: design.promoted-extras~12345678
+kind: design
+summary: extras vs extra
+status: active
+extras:
+  k: 1
+my_custom: "still unknown"
+@scry.entry.end -->`;
+    const result = parseMarkers(content, 'test.md');
+    expect(result.entries).toHaveLength(1);
+    const e = result.entries[0];
+    expect(e.extras).toEqual({ k: 1 });
+    // 'extras' is NOT in the unknown bucket anymore
+    expect(e.extra['extras']).toBeUndefined();
+    // But other unknown fields still are
+    expect(e.extra['my_custom']).toBe('still unknown');
   });
 });

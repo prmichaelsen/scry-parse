@@ -4,6 +4,20 @@ import yaml from 'js-yaml';
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Permitted scalar types for an `extras` field value (FR4.B, v1.1).
+ * Nested maps and lists are not conformant in v1.1.
+ */
+export type ExtrasValue = string | number | boolean | null;
+
+/**
+ * Structured `extras` metadata map (FR4.B, v1.1). Single-depth string-keyed
+ * map of scalars. `null` indicates the marker did not declare `extras` at
+ * all; an empty object `{}` indicates `extras: {}` was authored explicitly
+ * (which emits a diagnostic per FR4.B).
+ */
+export type ExtrasMap = Record<string, ExtrasValue>;
+
 export interface EntryMarker {
   /** Full artifact id: {kind}.{name}~{hash} */
   id: string;
@@ -29,6 +43,15 @@ export interface EntryMarker {
   implements: string[];
   /** IDs of artifacts this replaces (FR11.4: must be array form) */
   supersedes: string[];
+  /**
+   * Structured metadata about the artifact (FR4.B, scry-spec v1.1).
+   * Flat string-keyed map of scalars (string | number | boolean | null).
+   * `null` when no `extras:` field was declared; an object (possibly empty)
+   * when one was. Nested maps and lists are not conformant under v1.1
+   * but are preserved structurally with a diagnostic so downstream
+   * consumers can decide how to handle them.
+   */
+  extras: ExtrasMap | null;
   /** Unknown YAML fields preserved as-is per spec (parsers must not drop them) */
   extra: Record<string, unknown>;
   /** Source file path */
@@ -426,6 +449,106 @@ function coerceNullableString(val: unknown): string | null {
   return s === '' ? null : s;
 }
 
+/** FR4.B size cap on serialized `extras` payload, in bytes. */
+const EXTRAS_SIZE_CAP_BYTES = 4096;
+
+/**
+ * Parse and validate the `extras` field per FR4.B (scry-spec v1.1).
+ *
+ * Returns the parsed map, or `null` when the marker did not declare
+ * `extras` at all. Diagnostics emitted (informational warnings, per
+ * spec — never errors, since `extras` is optional):
+ *   - empty map (`{}`)
+ *   - non-mapping shape (scalar/array at the top level)
+ *   - nested map or list values
+ *   - serialized YAML length above the 4 KB cap
+ *
+ * Even when the shape is non-conformant the field is preserved
+ * structurally so downstream consumers can decide. Non-scalar values
+ * are passed through as `unknown`-cast scalars wrapped via `String(...)`
+ * is NOT done — preserving the original shape is required by the
+ * "MUST preserve `extras` in their output structurally" clause.
+ */
+function parseExtras(
+  raw: Record<string, unknown>,
+  file: string,
+  span: [number, number],
+  diagnostics: Diagnostic[],
+): ExtrasMap | null {
+  if (!('extras' in raw)) return null;
+  const val = raw['extras'];
+
+  // Treat YAML `extras:` (null value) as not-declared semantically, but emit
+  // an informational diagnostic so authoring slips are visible.
+  if (val == null) {
+    diagnostics.push({
+      level: 'warning',
+      message: `'extras' is declared but empty at ${file}:${span[0] + 1} (FR4.B)`,
+      line: span[0],
+    });
+    return {};
+  }
+
+  if (typeof val !== 'object' || Array.isArray(val)) {
+    diagnostics.push({
+      level: 'warning',
+      message: `'extras' must be a YAML mapping at ${file}:${span[0] + 1} (FR4.B); preserving as empty map`,
+      line: span[0],
+    });
+    return {};
+  }
+
+  const result: ExtrasMap = {};
+  const entries = Object.entries(val as Record<string, unknown>);
+
+  if (entries.length === 0) {
+    diagnostics.push({
+      level: 'warning',
+      message: `'extras' is present but empty ({}) at ${file}:${span[0] + 1} (FR4.B) — likely an authoring slip`,
+      line: span[0],
+    });
+  }
+
+  for (const [k, v] of entries) {
+    if (v === null) {
+      result[k] = null;
+    } else if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      result[k] = v;
+    } else {
+      diagnostics.push({
+        level: 'warning',
+        message: `'extras.${k}' has a non-scalar value (nested map or list) at ${file}:${span[0] + 1} — non-conformant in scry-spec v1.1 (FR4.B); value preserved structurally`,
+        line: span[0],
+      });
+      // Preserve structurally per FR4.B "MUST NOT silently drop" / structural
+      // preservation clause. The cast acknowledges that downstream readers
+      // see a non-conformant shape they must handle.
+      (result as Record<string, unknown>)[k] = v;
+    }
+  }
+
+  // Size cap check (FR4.B): re-serialize the parsed value and measure.
+  // Using YAML re-serialization (rather than the source slice) gives a
+  // canonical, formatting-independent size — matches the "serialized form"
+  // language in the spec.
+  try {
+    const serialized = yaml.dump(val, { lineWidth: -1, noRefs: true });
+    const byteLength = Buffer.byteLength(serialized, 'utf8');
+    if (byteLength > EXTRAS_SIZE_CAP_BYTES) {
+      diagnostics.push({
+        level: 'warning',
+        message: `'extras' serialized size ${byteLength} bytes exceeds 4096-byte cap at ${file}:${span[0] + 1} (FR4.B); payload preserved (parsers MUST NOT truncate)`,
+        line: span[0],
+      });
+    }
+  } catch {
+    // Re-serialization shouldn't fail for shapes we've already parsed; if
+    // it does, skip the size diagnostic rather than blocking the marker.
+  }
+
+  return result;
+}
+
 /**
  * Parse a relationship field that MUST be in array form (FR11.4).
  * Returns the parsed string[] on success, or null on error (scalar form given).
@@ -710,16 +833,20 @@ function parseEntryBody(
     weight = isNaN(w) ? null : w;
   }
 
+  // FR4.B (v1.1): `extras` is a known field — promoted out of the unknown bucket.
   // Collect unknown fields per spec: "Unknown YAML fields must not error; parsers must preserve them"
   const KNOWN_ENTRY_FIELDS = new Set([
     'id', 'kind', 'summary', 'status', 'weight', 'tags',
     'rationale', 'applies', 'seeded_questions', 'depends_on',
-    'implements', 'supersedes',
+    'implements', 'supersedes', 'extras',
   ]);
   const extra: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) {
     if (!KNOWN_ENTRY_FIELDS.has(k)) extra[k] = v;
   }
+
+  // FR4.B (v1.1): parse extras as structured metadata.
+  const extras = parseExtras(raw, file, span, diagnostics);
 
   // FR11.4: relationship fields must be in array form — scalar is a parse error
   const dependsOnVal = parseRelationshipArray(raw['depends_on'], 'depends_on', file, span, diagnostics);
@@ -744,6 +871,7 @@ function parseEntryBody(
     dependsOn: dependsOnVal,
     implements: implementsVal,
     supersedes: supersedesVal,
+    extras,
     extra,
     file,
     span,

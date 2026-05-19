@@ -30,6 +30,8 @@ export type {
   BindingMarker,
   ParseResult,
   Diagnostic,
+  ExtrasValue,
+  ExtrasMap,
 } from './markers.js';
 
 // Types from validate
