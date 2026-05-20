@@ -1,6 +1,6 @@
 # scry-parse
 
-TypeScript parser for [scry-spec v1.1.0](https://github.com/prmichaelsen/scry-spec) markers.
+TypeScript parser for [scry-spec v1.1.1](https://github.com/prmichaelsen/scry-spec) markers.
 
 Parse, validate, and mint `@scry.entry`, `@scry.anchor`, and `@scry.bind` markers from any source file.
 
@@ -125,7 +125,7 @@ BASELINE_STATUSES // ['draft', 'active', 'deprecated']
 
 ## Spec conformance
 
-Implements [scry-spec v1.1.0](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR4.A/FR4.B/FR11.4/FR11.6/FR11.7 as clarified in v1.0.2–v1.1.0):
+Implements [scry-spec v1.1.1](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR4.A/FR4.B/FR11.4/FR11.6/FR11.7 as clarified in v1.0.2–v1.1.1):
 
 - ✅ FR1: Declarative marker sentinel syntax (5 line-comment + 5 block-comment styles)
 - ✅ FR2: Binding marker format (single-line + block form, mutual exclusion)

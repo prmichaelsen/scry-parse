@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Conformance bump to scry-spec v1.1.1
+
+- **scry-spec v1.1.1** (2026-05-19) is a framing-only patch:
+  - Overview rewritten to present discovery/recall (via `@scry.entry`)
+    and traceability (via `@scry.bind`) as co-equal purposes.
+  - FR14 "Recommended Idiom" sharpened — renamed to "Promote Structural
+    Edges to Formal Bindings"; defines a *structural edge* as a
+    relationship a future reader will plausibly traverse backward or by
+    typed predicate (`depends_on` / `implements` / `supersedes`).
+- **No parser change.** The v1.1.0 release at HEAD is fully v1.1.1
+  conformant; FR14's normative guarantees are unchanged, and no FR was
+  added, retired, or modified. README declares v1.1.1 conformance; no
+  republish is necessary.
+
 ## [1.1.0] — 2026-05-19
 
 ### Conformance
