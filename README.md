@@ -1,6 +1,6 @@
 # scry-parse
 
-TypeScript parser for [scry-spec v1.1.1](https://github.com/prmichaelsen/scry-spec) markers.
+TypeScript parser for [scry-spec v1.1.2](https://github.com/prmichaelsen/scry-spec) markers.
 
 Parse, validate, and mint `@scry.entry`, `@scry.anchor`, and `@scry.bind` markers from any source file.
 
@@ -125,7 +125,7 @@ BASELINE_STATUSES // ['draft', 'active', 'deprecated']
 
 ## Spec conformance
 
-Implements [scry-spec v1.1.1](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR4.A/FR4.B/FR11.4/FR11.6/FR11.7 as clarified in v1.0.2–v1.1.1):
+Implements [scry-spec v1.1.2](https://github.com/prmichaelsen/scry-spec) (FR1–FR14 + FR4.A/FR4.B/FR11.4/FR11.6/FR11.7 as clarified in v1.0.2–v1.1.2):
 
 - ✅ FR1: Declarative marker sentinel syntax (5 line-comment + 5 block-comment styles)
 - ✅ FR2: Binding marker format (single-line + block form, mutual exclusion)
@@ -146,6 +146,8 @@ Implements [scry-spec v1.1.1](https://github.com/prmichaelsen/scry-spec) (FR1–
 - ✅ FR12: Relationship semantics (depends_on extracted)
 - ✅ FR13: Binding semantics (any-to-any allowed)
 - ✅ FR14: Soft references (not parsed — spec-correct)
+
+ℹ️ **scry-spec v1.1.2** added a non-normative "Recommended Operating Discipline" section (D1–D5) plus a Canonical Minimal Form intended for verbatim inclusion in *consumer* tool-instruction surfaces (MCP `instructions`, CLI help, SDK system-prompt fragments). It does not introduce or modify any FR; pure parser libraries like this one have no behavior to update. Adoption of the Canonical Minimal Form is recommended for downstream consumers that present a tool-usage surface to agents (e.g., scry-mcp, scry-vscode, scry-cli).
 
 ## License
 
