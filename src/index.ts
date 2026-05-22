@@ -46,9 +46,12 @@ export type {
 export {
   BASELINE_KINDS,
   BASELINE_STATUSES,
+  PREDICATES,
+  SCRY_SPEC_VERSION,
 } from './consts.js';
 
 export type {
   BaselineKind,
   BaselineStatus,
+  Predicate,
 } from './consts.js';

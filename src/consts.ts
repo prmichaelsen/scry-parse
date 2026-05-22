@@ -29,6 +29,25 @@ export const BASELINE_STATUSES = ['draft', 'active', 'deprecated'] as const;
 export type BaselineStatus = (typeof BASELINE_STATUSES)[number];
 
 /**
+ * Predicate vocabulary per scry-spec v1.1 FR12.
+ *
+ * Each relationship field on @scry.entry materializes into a typed edge
+ * with one of these predicates in the implementation's relation surface.
+ */
+export const PREDICATES = ['depends_on', 'implements', 'supersedes'] as const;
+
+export type Predicate = (typeof PREDICATES)[number];
+
+/**
+ * Scry-spec version this parser implements.
+ *
+ * Bumped when the parser adopts spec changes. Used by the conformance
+ * test suite (test/conformance/) to verify the pinned-version fixture
+ * matches what the parser actually targets.
+ */
+export const SCRY_SPEC_VERSION = 'v1.1.0';
+
+/**
  * Validation regex for the full artifact id: {kind}.{name}~{hash}
  * FR7: ^[a-z]+\.[a-z0-9-]+~[a-f0-9]{8}$
  */
