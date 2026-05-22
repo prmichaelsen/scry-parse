@@ -17,6 +17,8 @@ export const BASELINE_KINDS = [
   'research',
   // Implementation
   'code',
+  // Outcomes (v1.2)
+  'goal',
 ] as const;
 
 export type BaselineKind = (typeof BASELINE_KINDS)[number];
@@ -34,7 +36,7 @@ export type BaselineStatus = (typeof BASELINE_STATUSES)[number];
  * Each relationship field on @scry.entry materializes into a typed edge
  * with one of these predicates in the implementation's relation surface.
  */
-export const PREDICATES = ['depends_on', 'implements', 'supersedes'] as const;
+export const PREDICATES = ['depends_on', 'implements', 'supersedes', 'satisfies'] as const;
 
 export type Predicate = (typeof PREDICATES)[number];
 
@@ -45,7 +47,7 @@ export type Predicate = (typeof PREDICATES)[number];
  * test suite (test/conformance/) to verify the pinned-version fixture
  * matches what the parser actually targets.
  */
-export const SCRY_SPEC_VERSION = 'v1.1.0';
+export const SCRY_SPEC_VERSION = 'v1.2.0';
 
 /**
  * Validation regex for the full artifact id: {kind}.{name}~{hash}

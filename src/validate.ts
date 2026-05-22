@@ -113,6 +113,16 @@ function validateEntry(
   if (m.weight !== null && (m.weight < 0 || m.weight > 1)) {
     errors.push({ field: 'weight', message: `weight ${m.weight} is out of range [0.0, 1.0]` });
   }
+
+  // INV-GOAL-COMPLETION (scry-spec v1.2): hand-edited status=met on kind=goal
+  // is rejected at write-time by validating implementations. Non-validating
+  // parse preserves as-is per FR8/FR9; this rule fires only on validateMarker.
+  if (m.kind === 'goal' && m.status === 'met') {
+    errors.push({
+      field: 'status',
+      message: 'INV-GOAL-COMPLETION: status "met" on kind "goal" must be set by the satisfies-predicate engine, not hand-authored',
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------

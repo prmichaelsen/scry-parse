@@ -1,5 +1,5 @@
 /**
- * Vendored BASELINE_KINDS fixture per scry-spec v1.1 FR8.
+ * Vendored BASELINE_KINDS fixture per scry-spec v1.2 FR8.
  *
  * Copied from scry-spec (see pinned-version.ts). NOT read dynamically —
  * this is the calibration target. When scry-spec ships a new baseline-
@@ -26,4 +26,6 @@ export const VENDORED_BASELINE_KINDS = [
   'research',
   // Implementation
   'code',
+  // Outcomes (v1.2)
+  'goal',
 ] as const;

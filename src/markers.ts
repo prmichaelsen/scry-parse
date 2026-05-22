@@ -43,6 +43,8 @@ export interface EntryMarker {
   implements: string[];
   /** IDs of artifacts this replaces (FR11.4: must be array form) */
   supersedes: string[];
+  /** IDs of artifacts this satisfies (v1.2 FR12: must be array form) */
+  satisfies: string[];
   /**
    * Structured metadata about the artifact (FR4.B, scry-spec v1.1).
    * Flat string-keyed map of scalars (string | number | boolean | null).
@@ -838,7 +840,7 @@ function parseEntryBody(
   const KNOWN_ENTRY_FIELDS = new Set([
     'id', 'kind', 'summary', 'status', 'weight', 'tags',
     'rationale', 'applies', 'seeded_questions', 'depends_on',
-    'implements', 'supersedes', 'extras',
+    'implements', 'supersedes', 'satisfies', 'extras',
   ]);
   const extra: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) {
@@ -858,6 +860,9 @@ function parseEntryBody(
   const supersedesVal = parseRelationshipArray(raw['supersedes'], 'supersedes', file, span, diagnostics);
   if (supersedesVal === null) return null;
 
+  const satisfiesVal = parseRelationshipArray(raw['satisfies'], 'satisfies', file, span, diagnostics);
+  if (satisfiesVal === null) return null;
+
   return {
     id,
     kind,           // FR8: preserved as-authored
@@ -871,6 +876,7 @@ function parseEntryBody(
     dependsOn: dependsOnVal,
     implements: implementsVal,
     supersedes: supersedesVal,
+    satisfies: satisfiesVal,
     extras,
     extra,
     file,

@@ -481,7 +481,8 @@ describe('Constants', () => {
     expect(BASELINE_KINDS).toContain('design');
     expect(BASELINE_KINDS).toContain('spec');
     expect(BASELINE_KINDS).toContain('code');
-    expect(BASELINE_KINDS).toHaveLength(11);
+    expect(BASELINE_KINDS).toContain('goal');
+    expect(BASELINE_KINDS).toHaveLength(12);
   });
 
   it('BASELINE_STATUSES contains expected values', () => {

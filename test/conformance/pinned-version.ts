@@ -9,4 +9,4 @@
  * without the parser advancing (or vice versa) and is treated
  * as a drift failure.
  */
-export const PINNED_SCRY_SPEC_VERSION = 'v1.1.0';
+export const PINNED_SCRY_SPEC_VERSION = 'v1.2.0';
